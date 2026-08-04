@@ -406,3 +406,224 @@ mysql -u root -h localhost -P 3306 -p密码
 quit/exit
 ```
 
+
+
+## 4、字符集编码问题
+
+### 4.1 MySQL5.7
+
+- **问题再现：命令行操作sql乱码问题**
+
+```mysql
+mysql> INSERT INTO t_stu VALUES(1,'张三','男');
+ERROR 1366 (HY000): Incorrect string value: '\xD5\xC5\xC8\xFD' for column 'sname' at row 1
+```
+
+- **问题解决**
+
+步骤1：查看编码命令
+
+```
+show variables like 'character_%';
+show variables like 'collation_%';
+```
+
+步骤2：修改mysql的数据目录下的my.ini配置文件
+
+```ini
+[mysql]  #大概在63行左右，在其下添加
+... 
+default-character-set=utf8  #默认字符集
+
+[mysqld]  # 大概在76行左右，在其下添加
+...
+character-set-server=utf8
+collation-server=utf8_general_ci
+```
+
+> 注意：建议修改配置文件使用notepad++等高级文本编辑器，使用记事本等软件打开修改后可能会导致文件编码修改为“含BOM头”的编码，从而服务重启失败。
+
+步骤3：重启服务
+
+步骤4：查看编码命令
+
+```sql
+show variables like 'character_%';
+show variables like 'collation_%';
+```
+
+![MySQL编码2](图片/基础/Windows下载安装/MySQL编码2.jpg)
+
+* 如果是以上配置就说明对了。接着我们就可以新创建数据库、新创建数据表，接着添加包含中文的数据了。
+
+
+
+### 4.2 MySQL8.0中
+
+- 在MySQL 8.0版本之前，默认字符集为latin1，utf8字符集指向的是utf8mb3。网站开发人员在数据库设计的时候往往会将编码修改为utf8字符集。如果遗忘修改默认的编码，就会出现乱码的问题。从MySQL 8.0开始，数据库的默认编码改为`utf8mb4`，从而避免了上述的乱码问题。
+
+
+
+## 5、MySQL目录结构与源码
+
+| MySQL的目录结构                             | 说明                                 |
+| ------------------------------------------- | ------------------------------------ |
+| bin目录                                     | 所有MySQL的可执行文件。如：mysql.exe |
+| MySQLInstanceConfig.exe                     | 数据库的配置向导，在安装时出现的内容 |
+| data目录                                    | 系统数据库所在的目录                 |
+| my.ini文件                                  | MySQL的主要配置文件                  |
+| C:\ProgramData\MySQL\MySQL Server 8.0\data\ | 用户创建的数据库所在的目录           |
+
+
+
+## 6、常见问题的解决
+
+### 6.1 root密码忘记
+
+1: 通过任务管理器或者服务管理，关掉mysqld(服务进程)
+2: 通过命令行+特殊参数开启mysqld
+mysqld --defaults-file="D:\ProgramFiles\mysql\MySQLServer5.7Data\my.ini" --skip-grant-tables
+
+3: 此时，mysqld服务进程已经打开。并且不需要权限检查
+4: mysql -uroot 无密码登陆服务器。另启动一个客户端进行
+5: 修改权限表
+（1） use mysql;
+（2）update user set authentication_string=password('新密码') where user='root' and Host='localhost'; 
+（3）flush privileges;
+6: 通过任务管理器，关掉mysqld服务进程。
+7: 再次通过服务管理，打开mysql服务。
+8: 即可用修改后的新密码登陆。
+
+
+
+### 6.2 不是内部或外部命令
+
+- 如果输入mysql命令报“不是内部或外部命令”，把mysql安装目录的bin目录配置到环境变量path中
+
+
+
+### 6.3 没有选择数据库
+
+| ERROR 1046 (3D000): No database selected                     |
+| ------------------------------------------------------------ |
+| 解决方案一：就是使用“USE 数据库名;”语句，这样接下来的语句就默认针对这个数据库进行操作 |
+| 解决方案二：就是所有的表对象前面都加上“数据库.”              |
+
+
+
+### 6.4 命令行客户端的字符集问题
+
+```mysql
+mysql> INSERT INTO t_stu VALUES(1,'张三','男');
+ERROR 1366 (HY000): Incorrect string value: '\xD5\xC5\xC8\xFD' for column 'sname' at row 1
+```
+
+- 原因：服务器端认为你的客户端的字符集是utf-8，而实际上你的客户端的字符集是GBK。
+
+
+- 查看所有字符集：**SHOW VARIABLES LIKE 'character_set_%';**
+
+
+![字符集问题1](图片/基础/Windows下载安装/字符集问题1.png)
+
+- 解决方案，设置当前连接的客户端字符集 **“SET NAMES GBK;”**
+
+
+![字符集问题2](图片/基础/Windows下载安装/字符集问题2.png)
+
+
+
+### 6.5 修改数据库和表的字符编码
+
+修改编码：
+
+（1)先停止服务，（2）修改my.ini文件（3）重新启动服务
+
+说明：
+
+如果是在修改my.ini之前建的库和表，那么库和表的编码还是原来的Latin1，要么删了重建，要么使用alter语句修改编码。
+
+```mysql
+mysql> create database 0728db charset Latin1;
+Query OK, 1 row affected (0.00 sec)
+```
+
+```
+mysql> use 0728db;
+Database changed
+```
+
+```mysql
+mysql> create table student (id int , name varchar(20)) charset Latin1;
+Query OK, 0 rows affected (0.02 sec)
+
+
+mysql> show create table student\G
+*************************** 1. row ***************************
+       Table: student
+Create Table: CREATE TABLE `student` (
+  `id` int(11) NOT NULL,
+  `name` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+1 row in set (0.00 sec)
+```
+
+```mysql
+mysql> alter table student charset utf8; #修改表字符编码为UTF8
+Query OK, 0 rows affected (0.01 sec)
+Records: 0  Duplicates: 0  Warnings: 0
+
+
+mysql> show create table student\G
+*************************** 1. row ***************************
+       Table: student
+Create Table: CREATE TABLE `student` (
+  `id` int(11) NOT NULL,
+  `name` varchar(20) CHARACTER SET latin1 DEFAULT NULL,  #字段仍然是latin1编码
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+1 row in set (0.00 sec)
+
+
+mysql> alter table student modify name varchar(20) charset utf8; #修改字段字符编码为UTF8
+Query OK, 0 rows affected (0.05 sec)
+Records: 0  Duplicates: 0  Warnings: 0
+
+
+mysql> show create table student\G
+*************************** 1. row ***************************
+       Table: student
+Create Table: CREATE TABLE `student` (
+  `id` int(11) NOT NULL,
+  `name` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+1 row in set (0.00 sec)
+```
+
+```mysql
+mysql> show create database 0728db;;
++--------+-----------------------------------------------------------------+
+|Database| Create Database                                                 |
++------+-------------------------------------------------------------------+
+|0728db| CREATE DATABASE `0728db` /*!40100 DEFAULT CHARACTER SET latin1 */ |
++------+-------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+
+mysql> alter database 0728db charset utf8; #修改数据库的字符编码为utf8
+Query OK, 1 row affected (0.00 sec)
+
+
+mysql> show create database 0728db;
++--------+-----------------------------------------------------------------+
+|Database| Create Database                                                 |
++--------+-----------------------------------------------------------------+
+| 0728db | CREATE DATABASE `0728db` /*!40100 DEFAULT CHARACTER SET utf8 */ |
++--------+-----------------------------------------------------------------+
+1 row in set (0.00 sec)
+```
+
+
+
