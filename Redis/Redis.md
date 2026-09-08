@@ -110,16 +110,16 @@
   ![redis安装路径](图片/基础/redis安装路径.png)
 
 - 6、将redis解压包下默认的配置文件redis.conf拷贝到自己定义好的一个路径下
-  - mkdir myredis
-  - cp redis.conf myredis/redis7.conf
-- 7、<font color="red">**修改myredis/redis7.conf配置文件做初始化设置**</font>，改完记得重启才能生效
+  - mkdir /myredis
+  - cp redis.conf /myredis/redis7.conf
+- 7、<font color="red">**修改/myredis/redis7.conf配置文件做初始化设置**</font>，改完记得重启才能生效
 
   - <font color="red">**默认daemonize no  改为  daemonize yes**</font>，意思是改为后台服务端启动
   - <font color="red">**默认protected-mode yes  改为  protected-mode no**</font>，如果想要让别人访问连接，这里的保护模式就得禁用掉
   - <font color="red">**默认bind 127.0.0.1 -::1注释掉，这个意思是默认只能访问本机，不注释掉会影响远程IP访问**</font>
   - <font color="red">**添加redis密码：requirepass li998813**</font>
 
-- 8、**服务端启动（在/usr/local/bin目录下运行redis-server，启用myredis/redis7.conf配置文件）**：redis-server myredis/redis7.conf
+- 8、**服务端启动（在/usr/local/bin目录下运行redis-server，启用/myredis/redis7.conf配置文件）**：redis-server /myredis/redis7.conf
 - 9、查看是否启动成功：ps -ef|grep redis|grep -v grep
 - 10、连接服务：redis-cli -a li998813 -p 6379，注意：-p不写默认是访问6379
 - 11、关闭
